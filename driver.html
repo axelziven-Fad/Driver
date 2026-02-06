@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <script>
+    // MATIKAN KLIK KANAN
+    document.addEventListener('contextmenu', event => event.preventDefault());
+
+    // MATIKAN SHORTCUT TOMBOL (F12, Ctrl+U, Ctrl+S, dll)
+    document.onkeydown = function(e) {
+        if (e.keyCode == 123) { return false; } // F12
+        if (e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) { return false; } // Ctrl+Shift+I
+        if (e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)) { return false; } // Ctrl+Shift+C
+        if (e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) { return false; } // Ctrl+Shift+J
+        if (e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) { return false; } // Ctrl+U
+        if (e.ctrlKey && e.keyCode == 'S'.charCodeAt(0)) { return false; } // Ctrl+S
+    }
+</script>
+
+    <title>Driver SPPG Ultimate 🚀</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.14.0/Sortable.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    
+    <style>
+        :root { --primary: #6C63FF; --bg: #1a1a2e; --card: #16213e; --text: #fff; --success: #2ecc71; --danger: #e74c3c; --warning: #f39c12; }
+        body { background: var(--bg); color: var(--text); font-family: 'Poppins', sans-serif; margin: 0; padding: 15px; }
+        .container { max-width: 450px; margin: 0 auto; padding-bottom: 80px; }
+        h3 { text-align: center; background: linear-gradient(to right, #4facfe, #00f2fe); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 20px; font-size: 24px; }
+        .glass-input { width: 100%; padding: 15px; margin: 8px 0; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: white; box-sizing: border-box; }
+        select.glass-input option { background: var(--card); color: white; }
+        .btn-excel { background: var(--warning); color: #fff; width: 100%; padding: 12px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .box-wrapper { background: var(--card); border-radius: 15px; padding: 15px; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px; margin-top: 20px;}
+        .school-picker { height: 150px; overflow-y: auto; }
+        .school-item { padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .btn-add { background: var(--success); color: white; border: none; border-radius: 50%; width: 24px; height: 24px; font-weight: bold; cursor: pointer; }
+        .active-route-container { background: rgba(0,0,0,0.2); border: 1px dashed #555; padding: 10px; border-radius: 15px; min-height: 100px; }
+        .route-item { background: #232d4b; padding: 12px; margin-bottom: 8px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid var(--primary); touch-action: none; }
+        .handle { color: #888; font-size: 20px; cursor: grab; padding-right: 15px; }
+        .btn-done { background: var(--success); border: none; color: white; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer; }
+        .btn-gas { width: 100%; padding: 18px; border-radius: 50px; border: none; font-weight: bold; margin-top: 20px; cursor: pointer; background: linear-gradient(45deg, #11998e, #38ef7d); color: white; font-size: 16px; transition: 0.3s; }
+        .btn-gas.stop-mode { background: linear-gradient(45deg, #FF416C, #FF4B2B); box-shadow: 0 4px 15px rgba(255, 75, 43, 0.3); }
+        .kendala-area { display: none; margin-top: 15px; padding: 15px; background: rgba(231, 76, 60, 0.1); border-radius: 10px; border: 1px solid var(--danger); }
+        .status-badge { text-align: center; margin-top: 10px; color: var(--success); font-size: 12px; display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h3>SPPG DRIVER PRO 🚀</h3>
+        
+        <input type="text" id="namaDriver" class="glass-input" placeholder="Nama Driver (Wajib Diisi)">
+        <select id="kloter" class="glass-input">
+            <option value="Kloter 1">Kloter 1 (Pagi)</option>
+            <option value="Kloter 2">Kloter 2 (Siang)</option>
+        </select>
+
+        <input type="file" id="excelInput" accept=".xlsx, .xls" style="display: none;" onchange="handleExcelUpload(this)">
+        <button class="btn-excel" onclick="document.getElementById('excelInput').click()">📂 Import Rute Excel</button>
+
+        <div class="box-wrapper">
+            <span style="font-size:12px; color:#aaa;">👇 PILIH MANUAL:</span>
+            <div class="school-picker" id="sourceList"></div>
+        </div>
+
+        <div class="box-wrapper" style="border:none; background:transparent; padding:0;">
+            <span style="font-size:12px; color:#aaa;">📋 RUTE SAYA (GESER UNTUK URUTKAN):</span>
+            <div class="active-route-container" id="myRouteList">
+                <div style="text-align:center; color:#555; padding:20px; font-size:12px;" id="emptyMsg">Belum ada sekolah dipilih...</div>
+            </div>
+        </div>
+
+        <button class="btn-gas" id="btnUtama" onclick="toggleGas()">GAS MULAI! 🔥</button>
+
+        <div class="kendala-area" id="kendalaBox">
+            <span style="font-size:12px; color:var(--danger)">⚠️ LAPOR KENDALA:</span>
+            <input type="text" id="pesanKendala" class="glass-input" placeholder="Contoh: Ban bocor..." oninput="updateKendala()">
+        </div>
+        <div id="statusInfo" class="status-badge">🟢 Lokasi Live Aktif - Data Terkirim!</div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <script>
+        // CONFIG SANG RAJA (SUDAH DI-TANAM)
+        const firebaseConfig = {
+            apiKey: "AIzaSyAXnmhUbBBZv7as33EXqKMVhmWsv1s0S9Y",
+            authDomain: "sppg-tracker.firebaseapp.com",
+            databaseURL: "https://sppg-tracker-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "sppg-tracker",
+            storageBucket: "sppg-tracker.firebasestorage.app",
+            messagingSenderId: "583689454613",
+            appId: "1:583689454613:web:24e9441df31b9e3d5e3a1c",
+            measurementId: "G-3JQNH728MM"
+        };
+
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const SPPG_LOC = { lat: -7.907354, lng: 110.169152 }; 
+        const sekolahData = ["KB SADEWA CERME", "KB PREGIWATI", "KB SADEWO", "KB BAYU SETO", "KB EDELWEIS", "KB NAKULA SADEWA", "KB MASITA", "KB TUNAS TIRTO", "KB CITRA GAMI", "TK ABA CABEAN", "RA MASYITOH GOTAKAN", "RA ZAID BIN SABIT GOTAKAN", "TK PKK PUSPITORINI", "TK ABA DUKUH", "TK PKK KARTINI", "TK MASITA", "TK MASYITOH MAESAN", "TK ABA PERENG", "TK ABA SUNGAPAN", "TK PKK MELATI KEMENDUNG", "SD N DUKUH", "SD N KEMBANG MALANG", "SD UNGGULAN MUH KREMBANGAN", "SD N KEMENDUNG", "SD N KREMBANGAN", "SD N 1 DEPOK", "SD N KEPUH", "SD N 3 SUNGAPAN", "MI ZAID BIN SABIT GOTAKAN", "MAN 2 WATES"];
+
+        let myRoute = [];
+        let watchId = null;
+
+        const sourceList = document.getElementById('sourceList');
+        sekolahData.forEach(sekolah => {
+            const div = document.createElement('div');
+            div.className = 'school-item';
+            div.innerHTML = `<span>${sekolah}</span> <button class="btn-add">+</button>`;
+            div.onclick = () => tambahKeRute(sekolah);
+            sourceList.appendChild(div);
+        });
+
+        new Sortable(document.getElementById('myRouteList'), { handle: '.handle', animation: 150, onEnd: function() { updateRouteArray(); syncToFirebase(); } });
+
+        function handleExcelUpload(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+                let importedRoute = [];
+                jsonData.forEach(row => {
+                    if (row[0]) {
+                        let match = sekolahData.find(s => s.toUpperCase() === row[0].toString().trim().toUpperCase());
+                        if (match && !importedRoute.includes(match)) importedRoute.push(match);
+                    }
+                });
+                if (importedRoute.length > 0) { myRoute = importedRoute; renderRoute(); alert("✅ Import Berhasil!"); }
+                else { alert("❌ Gagal! Nama sekolah tidak cocok."); }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function tambahKeRute(nama) { if (!myRoute.includes(nama)) { myRoute.push(nama); renderRoute(); } }
+
+        function renderRoute() {
+            const container = document.getElementById('myRouteList');
+            container.innerHTML = "";
+            if (myRoute.length === 0) { container.innerHTML = "<div style='text-align:center; color:#555; padding:20px; font-size:12px;' id='emptyMsg'>Belum ada sekolah dipilih...</div>"; return; }
+            myRoute.forEach((sekolah, index) => {
+                const item = document.createElement('div');
+                item.className = 'route-item';
+                item.innerHTML = `<div style="display:flex; align-items:center;"><span class="handle">☰</span><span style="font-size:13px; margin-left:10px;">${index + 1}. ${sekolah}</span></div><button class="btn-done" onclick="selesaiAntar('${sekolah}')">Sampai ✅</button>`;
+                container.appendChild(item);
+            });
+            syncToFirebase();
+        }
+
+        function updateRouteArray() {
+            const items = document.querySelectorAll('.route-item span[style*="margin-left"]');
+            myRoute = Array.from(items).map(el => el.innerText.replace(/^[0-9]+\. /, ''));
+            renderRoute();
+        }
+
+        function selesaiAntar(sekolahNama) {
+            if(!confirm(`Yakin sudah sampai di ${sekolahNama}?`)) return;
+            const nama = document.getElementById('namaDriver').value;
+            database.ref('reports').push({ driver: nama, sekolah: sekolahNama, jam: new Date().toLocaleTimeString('id-ID'), tanggal: new Date().toLocaleDateString('id-ID') });
+            myRoute = myRoute.filter(s => s !== sekolahNama);
+            renderRoute();
+        }
+
+        function updateKendala() { if (watchId) syncToFirebase(); }
+
+        function syncToFirebase(lat = null, lng = null) {
+            const nama = document.getElementById('namaDriver').value;
+            const kloter = document.getElementById('kloter').value;
+            if (!nama) return;
+            const kendala = document.getElementById('pesanKendala').value;
+            let statusKhusus = "";
+            if (lat && lng) {
+                // Rumus Jarak Manual
+                var R = 6371; var dLat = (SPPG_LOC.lat-lat) * (Math.PI/180); var dLon = (SPPG_LOC.lng-lng) * (Math.PI/180); 
+                var a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat*(Math.PI/180)) * Math.cos(SPPG_LOC.lat*(Math.PI/180)) * Math.sin(dLon/2) * Math.sin(dLon/2); 
+                var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+                if (R * c < 0.1) statusKhusus = "Sedang mengambil makanan di SPPG 🍱";
+            }
+            database.ref('drivers/' + nama).update({
+                nama: nama, kloter: kloter, rute: myRoute, kendala: kendala, statusKhusus: statusKhusus,
+                ...(lat && { lat: lat, lng: lng, updateTerakhir: new Date().toLocaleTimeString() })
+            });
+        }
+
+        function toggleGas() {
+            const btn = document.getElementById('btnUtama');
+            const nama = document.getElementById('namaDriver').value;
+
+            if (watchId !== null) { 
+                if(navigator.geolocation) navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+                btn.innerHTML = "GAS MULAI! 🔥";
+                btn.className = "btn-gas";
+                document.getElementById('kendalaBox').style.display = 'none';
+                document.getElementById('statusInfo').style.display = 'none';
+                return;
+            }
+
+            if (!nama) { alert("Isi Nama Driver dulu bos!"); return; }
+            if (myRoute.length === 0) { alert("Pilih minimal 1 sekolah!"); return; }
+
+            // START: LANGSUNG KIRIM SINYAL AWAL
+            btn.innerHTML = "STOP PENGANTARAN 🛑";
+            btn.className = "btn-gas stop-mode";
+            document.getElementById('kendalaBox').style.display = 'block';
+            document.getElementById('statusInfo').style.display = 'block';
+            
+            // Tembak Data Default ke SPPG biar dashboard langsung respon
+            syncToFirebase(-7.8915, 110.1680);
+
+            if (navigator.geolocation) {
+                watchId = navigator.geolocation.watchPosition((pos) => {
+                    syncToFirebase(pos.coords.latitude, pos.coords.longitude);
+                }, (err) => { console.log("GPS Error"); }, { enableHighAccuracy: true });
+            } else { alert("GPS Mati, tapi status online terkirim."); }
+        }
+    </script>
+</body>
+</html>
