@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <script>
+    // ==========================================
+    // 🛡️ SECURITY SYSTEM (ANTI-INTIP)
+    // ==========================================
+    document.addEventListener('contextmenu', event => event.preventDefault());
+
+    document.onkeydown = function(e) {
+        if (e.keyCode == 123) { return false; } // F12
+        if (e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) { return false; }
+        if (e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)) { return false; }
+        if (e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) { return false; }
+        if (e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) { return false; }
+        if (e.ctrlKey && e.keyCode == 'S'.charCodeAt(0)) { return false; }
+    }
+    </script>
+
+    <title>Dashboard SPPG Panjatan 002 🍱</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        body { margin: 0; font-family: 'Fredoka', sans-serif; background-color: #fdfbf7; overflow: hidden; }
+        .swal2-popup { font-family: 'Fredoka', sans-serif !important; }
+
+        /* HEADER STYLE */
+        .header {
+            background-color: #FFC107; padding: 10px 20px; 
+            display: flex; justify-content: space-between; align-items: center; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1001; position: relative; height: 60px;
+        }
+        .header h1 { margin: 0; font-size: 18px; color: #333; }
+        
+        .btn-group { display: flex; gap: 10px; }
+        
+        .btn-download { 
+            background: #27ae60; color: white; border: none; padding: 8px 15px; 
+            border-radius: 20px; cursor: pointer; font-weight: bold; font-family: inherit; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: 0.2s; display: flex; align-items: center; gap:5px;
+        }
+        .btn-download:hover { background: #219150; transform: scale(1.05); }
+
+        .btn-delete { 
+            background: #c0392b; color: white; border: none; padding: 8px 15px; 
+            border-radius: 20px; cursor: pointer; font-weight: bold; font-family: inherit; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: 0.2s;
+        }
+        .btn-delete:hover { background: #a93226; transform: scale(1.05); }
+
+        /* MAP AREA */
+        #map { height: calc(100vh - 200px); width: 100%; z-index: 1; background: #ddd; }
+        
+        /* SIDEBAR / BOTTOM PANEL */
+        .info-panel {
+            height: 200px; background: white; padding: 15px; box-sizing: border-box;
+            border-top-left-radius: 20px; border-top-right-radius: 20px;
+            box-shadow: 0 -5px 15px rgba(0,0,0,0.1); overflow-y: auto;
+            position: fixed; bottom: 0; width: 100%; z-index: 1002;
+        }
+
+        /* --- STYLE BARU: CARD ACCORDION (DROPDOWN) --- */
+        .driver-card {
+            background: #e3f2fd; 
+            border-radius: 12px; 
+            margin-bottom: 10px;
+            border-left: 5px solid #2196F3; 
+            position: relative;
+            overflow: hidden; /* Wajib untuk animasi */
+            transition: all 0.3s ease;
+        }
+        
+        /* Header Card (Yang di-klik) */
+        .driver-header {
+            padding: 10px;
+            cursor: pointer;
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+        }
+        .driver-header:hover { background-color: #bbdefb; }
+
+        /* Indikator Panah */
+        .arrow-indicator {
+            font-size: 12px; color: #1565C0; transition: transform 0.3s ease;
+        }
+        
+        /* Body Card (List Sekolah) - Default Sembunyi */
+        .driver-details-body {
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+            background: #ffffff;
+            transition: max-height 0.4s ease, opacity 0.3s ease, padding 0.3s ease;
+        }
+
+        /* Styling List di dalam Dropdown */
+        .sekolah-list {
+            list-style: none; padding: 0; margin: 0;
+        }
+        .sekolah-list li {
+            padding: 8px 15px;
+            border-bottom: 1px solid #eee;
+            font-size: 11px;
+            color: #555;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .sekolah-list li:last-child { border-bottom: none; }
+
+        /* --- KELAS AKTIF (SAAT DIBUKA) --- */
+        .driver-card.open .arrow-indicator { transform: rotate(180deg); }
+        .driver-card.open .driver-details-body {
+            max-height: 500px; /* Cukup besar untuk menampung list */
+            opacity: 1;
+            padding-bottom: 10px;
+            border-top: 1px solid #bbdefb;
+        }
+
+        /* Alert Kendala */
+        .alert-kendala {
+            background: #ffebee; color: #c62828; padding: 5px; margin: 10px;
+            border-radius: 5px; font-size: 12px; border: 1px solid #ef5350; font-weight: bold;
+        }
+
+        /* Notifikasi Waktu */
+        .notif-badge {
+            position: absolute; top: 10px; right: 40px; background: #FF9800;
+            color: white; padding: 3px 8px; border-radius: 10px; font-size: 10px;
+            display: none; animation: blink 1s infinite;
+        }
+        @keyframes blink { 50% { opacity: 0.5; } }
+        
+        /* Label Nama di Peta */
+        .label-driver {
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid #333; border-radius: 4px; padding: 2px 5px;
+            font-weight: bold; font-size: 10px; color: #000;
+            box-shadow: 1px 1px 3px rgba(0,0,0,0.3); white-space: nowrap;
+        }
+        .emoji-icon { font-size: 24px; text-align: center; line-height: 1; text-shadow: 2px 2px 0px #fff; }
+
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div>
+            <h1>🍱 SPPG Panjatan 002</h1>
+            <small style="font-size:11px;">Monitoring & Laporan by Fadlan Kharisma</small>
+        </div>
+        <div class="btn-group">
+            <button class="btn-delete" onclick="hapusArmadaAktif()">🗑️ Reset Armada</button>
+            <button class="btn-download" onclick="downloadExcel()">📊 Export Excel</button>
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <div class="info-panel" id="listDriver">
+        <div style="text-align:center; color:#999; padding:20px;">
+            Menunggu sinyal armada... 📡
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <script>
+        // ==========================================
+        // 🔥 FIREBASE CONFIGURATION 🔥
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyAXnmhUbBBZv7as33EXqKMVhmWsv1s0S9Y",
+            authDomain: "sppg-tracker.firebaseapp.com",
+            databaseURL: "https://sppg-tracker-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "sppg-tracker",
+            storageBucket: "sppg-tracker.firebasestorage.app",
+            messagingSenderId: "583689454613",
+            appId: "1:583689454613:web:24e9441df31b9e3d5e3a1c",
+            measurementId: "G-3JQNH728MM"
+        };
+
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // 1. SETUP PETA 
+        const SPPG_COORDS = [-7.907354, 110.169152];
+        const map = L.map('map').setView(SPPG_COORDS, 13); 
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+        // 2. DATA 30 SEKOLAH (TARGET GEOFENCING)
+        const sekolahList = [
+            { nama: "KB SADEWA CERME", lat: -7.8958782, lng: 110.1775952 },
+            { nama: "KB PREGIWATI", lat: -7.8847537, lng: 110.1663259 },
+            { nama: "KB SADEWO", lat: -7.8958400, lng: 110.1774863 },
+            { nama: "KB BAYU SETO", lat: -7.8967954, lng: 110.1620361 }, 
+            { nama: "KB EDELWEIS", lat: -7.8765058, lng: 110.1867856 },
+            { nama: "KB NAKULA SADEWA", lat: -7.8982101, lng: 110.1898657 },
+            { nama: "KB MASITA", lat: -7.8846430, lng: 110.1816280 },
+            { nama: "KB TUNAS TIRTO", lat: -7.9244000, lng: 110.1817000 },
+            { nama: "KB CITRA GAMI", lat: -7.9110322, lng: 110.1939914 },
+            { nama: "TK ABA CABEAN", lat: -7.9137737, lng: 110.1922567 },
+            { nama: "RA MASYITOH GOTAKAN", lat: -7.8847933, lng: 110.1662309 },
+            { nama: "RA ZAID BIN SABIT", lat: -7.8998072, lng: 110.1682897 },
+            { nama: "TK PKK PUSPITORINI", lat: -7.8958400, lng: 110.1774863 },
+            { nama: "TK ABA DUKUH", lat: -7.8766542, lng: 110.1867416 },
+            { nama: "TK PKK KARTINI", lat: -7.8978904, lng: 110.1901404 },
+            { nama: "TK MASITA", lat: -7.8846299, lng: 110.1816313 },
+            { nama: "TK MASYITOH MAESAN", lat: -7.9243861, lng: 110.1960140 },
+            { nama: "TK ABA PERENG", lat: -7.9020787, lng: 110.2047730 },
+            { nama: "TK ABA SUNGAPAN", lat: -7.9264798, lng: 110.1810969 },
+            { nama: "TK PKK MELATI KEMENDUNG", lat: -7.8891136, lng: 110.1687127 },
+            { nama: "SD N DUKUH", lat: -7.8766854, lng: 110.1860619 },
+            { nama: "SD N KEMBANG MALANG", lat: -7.8955791, lng: 110.1771435 },
+            { nama: "SD UNGGULAN MUH KREMBANGAN", lat: -7.8862298, lng: 110.1833212 },
+            { nama: "SD N KEMENDUNG", lat: -7.8983878, lng: 110.1666515 },
+            { nama: "SD N KREMBANGAN", lat: -7.8962851, lng: 110.1883280 },
+            { nama: "SD N 1 DEPOK", lat: -7.9107935, lng: 110.1587187 },
+            { nama: "SD N KEPUH", lat: -7.8932589, lng: 110.1830488 },
+            { nama: "SD N 3 SUNGAPAN", lat: -7.9282203, lng: 110.1797436 },
+            { nama: "MI ZAID BIN SABIT GOTAKAN", lat: -7.8998072, lng: 110.1682897 },
+            { nama: "MAN 2 WATES", lat: -7.8844263, lng: 110.1535834 }
+        ];
+
+        const iconSekolah = L.divIcon({ className: 'emoji-icon', html: '🏫', iconSize: [20, 20] });
+        sekolahList.forEach(s => L.marker([s.lat, s.lng], {icon: iconSekolah}).addTo(map).bindPopup(s.nama));
+
+        const iconSPPG = L.divIcon({ className: 'emoji-icon', html: '🏢', iconSize: [30, 30] });
+        L.marker(SPPG_COORDS, {icon: iconSPPG}).addTo(map)
+         .bindTooltip("SPPG PANJATAN 002", {permanent:true, direction:'top', offset: [0, -20]});
+
+        let markers = {};
+        const iconMobil = L.divIcon({ className: 'emoji-icon', html: '🚚', iconSize: [35, 35] });
+
+        // ==========================================
+        // ⏱️ GLOBAL VARIABLES
+        // ==========================================
+        let potentialCheckins = {}; // Timer Masuk Radius
+        let reportedSessions = {};  // Data Laporan Sukses
+        let expandedDriver = null;  // MENYIMPAN STATUS DROPDOWN (Biar gak nutup sendiri)
+
+        // 3. LOGIC MONITORING UTAMA (REALTIME)
+        database.ref('drivers').on('value', (snapshot) => {
+            const data = snapshot.val();
+            const listDiv = document.getElementById('listDriver');
+            let htmlContent = ""; // Tampung HTML string dulu
+
+            if(data) {
+                Object.values(data).forEach(driver => {
+                    // --- JALANKAN LOGIKA SMART GEOFENCING ---
+                    checkGeofencing(driver);
+                    // ----------------------------------------
+
+                    // 1. Logic Data Tampilan
+                    let tujuanNext = (driver.rute && driver.rute.length > 0) ? driver.rute[0] : "Standby/Selesai";
+                    let kendalaHTML = driver.kendala ? `<div class="alert-kendala">⚠️ ${driver.kendala}</div>` : "";
+                    
+                    // 2. Notifikasi Jarak
+                    let notifHTML = "";
+                    let targetSekolah = sekolahList.find(s => s.nama === tujuanNext);
+                    if (targetSekolah && driver.lat) {
+                        const dist = getDistanceFromLatLonInKm(driver.lat, driver.lng, targetSekolah.lat, targetSekolah.lng);
+                        if (dist < 3) notifHTML = `<div class="notif-badge" style="display:block;">⏱️ 5 Menit Lagi!</div>`;
+                    }
+
+                    // 3. Buat List Muatan (Untuk Dropdown)
+                    let listMuatanHTML = `<li style="text-align:center; padding:10px;"><i>Belum ada rute</i></li>`;
+                    if (driver.rute && Array.isArray(driver.rute) && driver.rute.length > 0) {
+                        listMuatanHTML = driver.rute.map((sekolah, index) => {
+                            let statusIcon = (index === 0) ? "📍" : "📦"; // Ikon beda buat tujuan saat ini
+                            let style = (index === 0) ? "font-weight:bold; color:#1565C0;" : "";
+                            return `<li style="${style}">${statusIcon} ${sekolah}</li>`;
+                        }).join('');
+                    }
+
+                    // 4. Update Marker Peta (Label Permanen)
+                    updateMarker(driver, tujuanNext);
+
+                    // 5. RAKIT HTML KARTU (ACCORDION)
+                    // Cek apakah driver ini sedang dibuka?
+                    let openClass = (expandedDriver === driver.nama) ? "open" : "";
+                    
+                    htmlContent += `
+                        <div class="driver-card ${openClass}" id="card-${driver.nama.replace(/\s/g, '')}">
+                            ${notifHTML}
+                            
+                            <div class="driver-header" onclick="toggleAccordion('${driver.nama}')">
+                                <div style="display:flex; align-items:center;">
+                                    <div style="font-size:24px; margin-right:10px;">🚚</div>
+                                    <div>
+                                        <b style="color:#1565C0;">${driver.nama}</b> 
+                                        <span style="font-size:11px; color:#555;">(${driver.kloter || '-'})</span><br>
+                                        <span style="font-size:12px;">Menuju: <b>${tujuanNext}</b></span>
+                                    </div>
+                                </div>
+                                <div style="text-align:right;">
+                                    <div style="font-size:10px; color:#888;">${driver.updateTerakhir || ''}</div>
+                                    <div class="arrow-indicator">▼</div>
+                                </div>
+                            </div>
+
+                            <div class="driver-details-body">
+                                <div style="background:#f1f8e9; padding:5px 15px; font-size:10px; color:#33691e; font-weight:bold;">
+                                    DAFTAR PENGANTARAN:
+                                </div>
+                                <ul class="sekolah-list">
+                                    ${listMuatanHTML}
+                                </ul>
+                                ${kendalaHTML}
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                listDiv.innerHTML = htmlContent;
+
+            } else {
+                listDiv.innerHTML = "<div style='text-align:center; padding:20px; color:#999'>Belum ada armada aktif.</div>";
+            }
+        });
+
+        // ==========================================
+        // 🔄 FUNGSI TOGGLE ACCORDION
+        // ==========================================
+        function toggleAccordion(driverName) {
+            // Logic: Kalau diklik nama yang sama, tutup. Kalau beda, ganti target.
+            if (expandedDriver === driverName) {
+                expandedDriver = null;
+            } else {
+                expandedDriver = driverName;
+            }
+
+            // Update Tampilan Manual (Biar responsif tanpa nunggu Firebase)
+            const allCards = document.querySelectorAll('.driver-card');
+            allCards.forEach(card => card.classList.remove('open'));
+            
+            if (expandedDriver) {
+                const targetId = 'card-' + expandedDriver.replace(/\s/g, '');
+                const targetCard = document.getElementById(targetId);
+                if (targetCard) targetCard.classList.add('open');
+            }
+        }
+
+        // ==========================================
+        // 📍 UPDATE MARKER PETA
+        // ==========================================
+        function updateMarker(driver, tujuanNext) {
+            let popupContent = `<b>${driver.nama}</b><br>Menuju: ${tujuanNext}`;
+            
+            if (markers[driver.nama]) {
+                markers[driver.nama]
+                    .setLatLng([driver.lat, driver.lng])
+                    .setPopupContent(popupContent)
+                    .setTooltipContent(driver.nama);
+            } else {
+                markers[driver.nama] = L.marker([driver.lat, driver.lng], {icon: iconMobil})
+                    .bindPopup(popupContent)
+                    .bindTooltip(driver.nama, { permanent: true, direction: 'right', className: 'label-driver' })
+                    .addTo(map);
+            }
+        }
+
+        // ==========================================
+        // 🛡️ SMART GEOFENCING (ANTI-LEWAT DOANG)
+        // ==========================================
+        function checkGeofencing(driver) {
+            if (!driver.lat || !driver.lng) return;
+
+            sekolahList.forEach(sekolah => {
+                let dist = getDistanceFromLatLonInKm(driver.lat, driver.lng, sekolah.lat, sekolah.lng);
+                const sessionKey = `${driver.nama}_${sekolah.nama}`;
+                
+                // RADIUS DETEKSI: 100 METER (0.10 KM)
+                if (dist <= 0.10) {
+                    
+                    // Cek 1: Cooldown 1 Jam (Sudah lapor?)
+                    const now = new Date().getTime();
+                    if (reportedSessions[sessionKey] && (now - reportedSessions[sessionKey] < 3600000)) {
+                        return; 
+                    }
+
+                    // Cek 2: Timer Validasi (Dwell Time)
+                    if (!potentialCheckins[sessionKey]) {
+                        // Baru masuk radius -> Mulai Timer
+                        potentialCheckins[sessionKey] = now;
+                    } else {
+                        // Sedang di dalam -> Hitung Durasi
+                        const duration = now - potentialCheckins[sessionKey];
+                        
+                        // SYARAT: HARUS DIAM/BERADA DI RADIUS > 90 DETIK (1.5 Menit)
+                        if (duration > 90000) {
+                            
+                            // VALIDASI OK -> KIRIM LAPORAN
+                            pushAutoReport(driver.nama, sekolah.nama);
+                            
+                            // Tandai sebagai sukses
+                            reportedSessions[sessionKey] = now;
+                            delete potentialCheckins[sessionKey]; // Reset timer
+
+                            // Notifikasi Toast
+                            const Toast = Swal.mixin({
+                                toast: true, position: 'top-end', showConfirmButton: false, timer: 4000,
+                                timerProgressBar: true
+                            });
+                            Toast.fire({ 
+                                icon: 'success', 
+                                title: '📍 Validasi Sukses', 
+                                text: `${driver.nama} stop di ${sekolah.nama}` 
+                            });
+                        }
+                    }
+                } else {
+                    // JIKA KELUAR RADIUS SEBELUM WAKTUNYA -> RESET TIMER
+                    if (potentialCheckins[sessionKey]) {
+                        delete potentialCheckins[sessionKey];
+                    }
+                }
+            });
+        }
+
+        function pushAutoReport(driverName, sekolahName) {
+            const today = new Date();
+            const dateStr = today.getDate().toString().padStart(2,0) + '/' + (today.getMonth()+1).toString().padStart(2,0) + '/' + today.getFullYear();
+            const timeStr = today.getHours().toString().padStart(2,0) + ':' + today.getMinutes().toString().padStart(2,0);
+
+            database.ref('reports').push({
+                driver: driverName,
+                sekolah: sekolahName,
+                jam: timeStr + " (Auto)",
+                tanggal: dateStr,
+                timestamp: firebase.database.ServerValue.TIMESTAMP
+            });
+        }
+
+        // 4. BERSIH-BERSIH DATA LAMA (> 2 Minggu)
+        function cleanOldReports() {
+            database.ref('reports').once('value').then(snap => {
+                const data = snap.val();
+                if(!data) return;
+                const now = new Date();
+                const limit = 14 * 24 * 60 * 60 * 1000;
+                Object.keys(data).forEach(key => {
+                    const item = data[key];
+                    if(item.tanggal) {
+                        const parts = item.tanggal.split('/');
+                        const itemDate = new Date(parts[2], parts[1]-1, parts[0]);
+                        const diff = now - itemDate;
+                        if(diff > limit) { database.ref('reports/'+key).remove(); }
+                    }
+                });
+            });
+        }
+        cleanOldReports();
+
+        // 5. FITUR HAPUS ARMADA (POPUP)
+        function hapusArmadaAktif() {
+            Swal.fire({
+                title: '🔒 Hapus Armada Aktif',
+                text: 'Masukkan Password Admin:',
+                input: 'password',
+                inputAttributes: { autocapitalize: 'off', placeholder: 'Password...' },
+                showCancelButton: true,
+                confirmButtonText: 'Buka Akses',
+                cancelButtonText: 'Batal',
+                confirmButtonColor: '#d33',
+                preConfirm: (pass) => {
+                    if (pass !== "SPPGjaya") { Swal.showValidationMessage('🚫 Password Salah!'); }
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: '⚠️ Yakin Hapus Semua?',
+                        text: "Data driver aktif akan dihapus!",
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#d33',
+                        confirmButtonText: 'Ya, Hapus!'
+                    }).then((res) => {
+                        if (res.isConfirmed) {
+                            database.ref('drivers').remove()
+                                .then(() => {
+                                    for(var name in markers) { map.removeLayer(markers[name]); }
+                                    markers = {};
+                                    Swal.fire('Terhapus!', 'Dashboard BERSIH! 🧹', 'success');
+                                });
+                        }
+                    })
+                }
+            });
+        }
+
+        // 6. EXPORT EXCEL (POPUP)
+        function downloadExcel() {
+            Swal.fire({
+                title: '📊 Download Laporan',
+                text: 'Masukkan Password Admin:',
+                input: 'password',
+                icon: 'question',
+                inputAttributes: { autocapitalize: 'off', placeholder: 'Password...' },
+                showCancelButton: true,
+                confirmButtonText: 'Download',
+                confirmButtonColor: '#27ae60',
+                preConfirm: (pass) => {
+                    if (pass !== "hallo Sayang") { Swal.showValidationMessage('🚫 Password Salah!'); }
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: 'Memproses...',
+                        timer: 1000,
+                        didOpen: () => { Swal.showLoading() }
+                    }).then(() => {
+                        database.ref('reports').once('value').then((snapshot) => {
+                            const reports = snapshot.val();
+                            if (!reports) { 
+                                Swal.fire('Kosong', "Belum ada data laporan.", 'info'); 
+                                return; 
+                            }
+
+                            let dataExcel = [];
+                            let no = 1;
+                            Object.values(reports).forEach(r => {
+                                dataExcel.push({
+                                    "No": no++,
+                                    "Nama Driver": r.driver,
+                                    "Sekolah Tujuan": r.sekolah,
+                                    "Jam Sampai": r.jam,
+                                    "Tanggal": r.tanggal
+                                });
+                            });
+
+                            const ws = XLSX.utils.json_to_sheet(dataExcel);
+                            const wb = XLSX.utils.book_new();
+                            XLSX.utils.book_append_sheet(wb, ws, "Laporan Pengantaran");
+                            XLSX.writeFile(wb, "Laporan_SPPG.xlsx");
+                            
+                            Swal.fire('Berhasil!', 'File Excel didownload.', 'success');
+                        });
+                    });
+                }
+            });
+        }
+
+        function getDistanceFromLatLonInKm(lat1,lon1,lat2,lon2) {
+            var R = 6371; var dLat = deg2rad(lat2-lat1); var dLon = deg2rad(lon2-lon1); 
+            var a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * Math.sin(dLon/2) * Math.sin(dLon/2); 
+            var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); return R * c;
+        }
+        function deg2rad(deg) { return deg * (Math.PI/180); }
+    </script>
+</body>
+</html>
