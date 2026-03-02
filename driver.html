@@ -97,7 +97,7 @@
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
         const SPPG_LOC = { lat: -7.907354, lng: 110.169152 }; 
-        const sekolahData = ["KB SADEWA CERME", "KB PREGIWATI", "KB SADEWO", "KB BAYU SETO", "KB EDELWEIS", "KB NAKULA SADEWA", "KB MASITA", "KB TUNAS TIRTO", "KB CITRA GAMI", "TK ABA CABEAN", "RA MASYITOH GOTAKAN", "RA ZAID BIN SABIT GOTAKAN", "TK PKK PUSPITORINI", "TK ABA DUKUH", "TK PKK KARTINI", "TK MASITA", "TK MASYITOH MAESAN", "TK ABA PERENG", "TK ABA SUNGAPAN", "TK PKK MELATI KEMENDUNG", "SD N DUKUH", "SD N KEMBANG MALANG", "SD UNGGULAN MUH KREMBANGAN", "SD N KEMENDUNG", "SD N KREMBANGAN", "SD N 1 DEPOK", "SD N KEPUH", "SD N 3 SUNGAPAN", "MI ZAID BIN SABIT GOTAKAN", "MAN 2 WATES"];
+        const sekolahData = ["KB SADEWA CERME", "KB PREGIWATI", "KB SADEWO", "KB BAYU SETO", "KB EDELWEIS", "KB NAKULA SADEWA", "KB MASITA", "KB TUNAS TIRTO", "KB CITRA GAMI", "TK ABA CABEAN", "RA MASYITOH GOTAKAN", "RA ZAID BIN SABIT GOTAKAN", "TK PKK PUSPITORINI", "TK ABA DUKUH", "TK PKK KARTINI", "TK MASITA", "TK MASYITOH MAESAN", "TK ABA PERENG", "TK ABA SUNGAPAN", "TK PKK MELATI KEMENDUNG", "SD N DUKUH", "SD N KEMBANG MALANG", "SD UNGGULAN MUH KREMBANGAN", "SD N KEMENDUNG", "SD N KREMBANGAN", "SD N 1 DEPOK", "SD N KEPUH", "SD N 3 SUNGAPAN", "MI ZAID BIN SABIT GOTAKAN", "MAN 2 KULON PROGO"];
 
         let myRoute = [];
         let watchId = null;
@@ -209,7 +209,7 @@
             document.getElementById('statusInfo').style.display = 'block';
             
             // Tembak Data Default ke SPPG biar dashboard langsung respon
-            syncToFirebase(-7.8915, 110.1680);
+            syncToFirebase(-7.907354, 110.169152);
 
             if (navigator.geolocation) {
                 watchId = navigator.geolocation.watchPosition((pos) => {
@@ -219,4 +219,5 @@
         }
     </script>
 </body>
+
 </html>
